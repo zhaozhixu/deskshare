@@ -26,7 +26,7 @@ int make_dgram_server_socket(int portnum)
      }
 
      for (rp = result; rp != NULL; rp = rp->ai_next) {
-          sfd = socket(rp->ai_family, rp->ai_socktype
+          sfd = socket(rp->ai_family, rp->ai_socktype,
                        rp->ai_protocol);
           if (sfd == -1)
                continue;
@@ -47,12 +47,14 @@ int make_dgram_server_socket(int portnum)
      return sfd;
 }
 
-int make_dgram_client_socket(char *hostname, int portnum)
+int make_dgram_client_socket(char *servhost, int servport, int localport)
 {
      struct addrinfo hints;
      struct addrinfo *result, *rp;
-     int sfd, s;
+     struct addrinfo *result_lo, *rp_lo;
+     int sfd, s, s_lo;
      char service[NI_MAXSERV];
+     char service_lo[NI_MAXSERV];
 
      memset(&hints, 0, sizeof(struct addrinfo));
      hints.ai_family = AF_UNSPEC;
@@ -60,23 +62,44 @@ int make_dgram_client_socket(char *hostname, int portnum)
      hints.ai_flags = 0;
      hints.ai_protocol = 0;
 
-     sprintf(service, "%d", portnum);
-     s = getaddrinfo(hostname, service, &hints, &result);
+     sprintf(service, "%d", servport);
+     s = getaddrinfo(servhost, service, &hints, &result);
      if (s != 0) {
           fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(s));
+          return -1;
+     }
+
+     sprintf(service_lo, "%d", localport);
+     s_lo = getaddrinfo(NULL, service_lo, &hints, &result_lo);
+     if (s_lo != 0) {
+          fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(s_lo));
           return -1;
      }
 
      for (rp = result; rp != NULL; rp  = rp->ai_next) {
           sfd = socket(rp->ai_family, rp->ai_socktype,
                        rp->ai_protocol);
-          if (sfd = -1)
+          if (sfd == -1)
+               continue;
+
+          for (rp_lo = result_lo; rp_lo != NULL;
+               rp_lo = rp_lo->ai_next) {
+               if (bind(sfd, rp_lo->ai_addr, rp_lo->ai_addrlen) == 0)
+                    break;
+          }
+          if (rp_lo == NULL)
                continue;
 
           if (connect(sfd, rp->ai_addr, rp->ai_addrlen) != -1)
                break;
 
           close(sfd);
+     }
+     if (rp == NULL) {
+          fprintf(stderr,
+                  "make_dgram_client_socket: cannot make socket %d",
+                  sfd);
+          return -1;
      }
 
      freeaddrinfo(result);

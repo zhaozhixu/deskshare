@@ -1,26 +1,32 @@
-#include <gst/gst.h>
-
-/* Structure to contain all our information, so we can pass it to callbacks */
-typedef struct _CustomData {
-     GstElement *pipeline;
-     GstElement *videosource, *videoconvert, *videodec;
-     GstElement *videoqueue, *videodepay, *videosink;
-     GstElement *audiosource, *audioconvert, *audiodec;
-     GstElement *audioqueue, *audiodepay, *audiosink;
-} CustomData;
+#include "dsclient.h"
+#include <stdlib.h>
+#include <string.h>
 
 /* Handler for the pad-added signal */
-static void dec_pad_added_handler (GstElement *src, GstPad *pad, CustomData *data);
+static void dec_pad_added_handler (GstElement *src, GstPad *pad, CustomDataR *data);
 
-int main(int argc, char *argv[]) {
-     CustomData data;
+int receiver_setup() {
+     CustomDataR data;
      GstBus *bus;
      GstMessage *msg;
      GstStateChangeReturn ret;
+     GstCaps *videosrccaps;
+     GstCaps *audiosrccaps;
      gboolean terminate = FALSE;
+     /* int argc; */
+     /* char **argv; */
+     /* char *prog_name = "client"; */
 
      /* Initialize GStreamer */
-     gst_init (&argc, &argv);
+     gst_init (NULL, NULL);
+     /* argc = 1; */
+     /* argv = malloc(sizeof(char *)); */
+     /* *argv = malloc(sizeof(prog_name)); */
+     /* strcpy(*argv, prog_name); */
+     /* if (!gst_init_check (&argc, &argv, NULL)) { */
+     /*      g_printerr ("init error:"); */
+     /*      exit(EXIT_FAILURE); */
+     /* } */
 
      /* Create the elements */
      data.videosource = gst_element_factory_make ("udpsrc", "videosource");
@@ -66,13 +72,11 @@ int main(int argc, char *argv[]) {
           return -1;
      }
 
-     GstCaps *videosrccaps;
      videosrccaps = gst_caps_new_simple ("application/x-rtp",
                                          "media", G_TYPE_STRING, "video",
                                          "clock-rate", G_TYPE_INT, 90000,
                                          "encoding-name", G_TYPE_STRING, "H264",
                                          "payload", G_TYPE_INT, 96, NULL);
-     GstCaps *audiosrccaps;
      audiosrccaps = gst_caps_new_simple ("application/x-rtp",
                                          "media", G_TYPE_STRING, "audio",
                                          "clock-rate", G_TYPE_INT, 8000,
@@ -82,6 +86,8 @@ int main(int argc, char *argv[]) {
      /* set properties */
      g_object_set (data.videosource, "port", 5000, "caps", videosrccaps, NULL);
      g_object_set (data.audiosource, "port", 5002, "caps", audiosrccaps,  NULL);
+     /* gst_object_unref (videosrccaps); */
+     /* gst_object_unref (audiosrccaps); */
 
      /* Connect to the pad-added signal */
      g_signal_connect (data.videodec, "pad-added", G_CALLBACK (dec_pad_added_handler), &data);
@@ -144,7 +150,7 @@ int main(int argc, char *argv[]) {
 }
 
 /* This function will be called by the pad-added signal */
-static void dec_pad_added_handler (GstElement *src, GstPad *new_pad, CustomData *data) {
+static void dec_pad_added_handler (GstElement *src, GstPad *new_pad, CustomDataR *data) {
      GstPad *sink_pad = gst_element_get_static_pad (data->videoconvert, "sink");
      GstPadLinkReturn ret;
      GstCaps *new_pad_caps = NULL;

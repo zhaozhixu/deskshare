@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -8,4 +9,4 @@
 #include <string.h>
 
 int make_dgram_server_socket(int portnum);
-int make_dgram_client_socket(char *hostname, int portnum);
+int make_dgram_client_socket(char *servhost, int servport, int localhost);
