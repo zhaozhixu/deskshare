@@ -192,7 +192,6 @@ static void handle_transmit(char *buf, size_t n,
      if (sendto(sfd, send_buf, s, 0, (struct sockaddr *)dest_addr,
                 addrlen) != s)
           fprintf(stderr, "Error sending response\n");
-     free(send_buf);
 
      /* int cfd; */
      /* cfd = make_dgram_client_socket(peer.host, atoi(peer.port_5000), 0); */

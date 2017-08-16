@@ -26,13 +26,6 @@ int main(int argc, char *argv[])
           exit(EXIT_SUCCESS);
      }
 
-     if ((sfd = make_dgram_client_socket(serverhost, serverport, 0)) == -1)
-          return (EXIT_FAILURE);
-     if ((sfd_5000 = make_dgram_client_socket(serverhost, serverport, 5000)) == -1)
-          return (EXIT_FAILURE);
-     if ((sfd_5002 = make_dgram_client_socket(serverhost, serverport, 5002)) == -1)
-          return (EXIT_FAILURE);
-
      if (!strcmp(argv[1], "register"))
           handle_register(argv[2], argv[3]);
      else if (!strcmp(argv[1], "login"))
@@ -53,6 +46,9 @@ static void handle_register(char *username, char *password)
      char *write_buf;
      char read_buf[BUFSIZ];
      size_t s;
+
+     if ((sfd = make_dgram_client_socket(serverhost, serverport, 0)) == -1)
+          exit(EXIT_FAILURE);
 
      strcpy(user.name, username);
      strcpy(user.password, password);
@@ -78,6 +74,7 @@ static void handle_register(char *username, char *password)
      }
 
      printf("Register success!\n");
+     close(sfd);
 }
 
 static void handle_login(char *username, char *password)
@@ -86,6 +83,11 @@ static void handle_login(char *username, char *password)
      char *write_buf;
      char read_buf[BUFSIZ];
      size_t s;
+
+     if ((sfd_5000 = make_dgram_client_socket(serverhost, serverport, 5000)) == -1)
+          exit(EXIT_FAILURE);
+     if ((sfd_5002 = make_dgram_client_socket(serverhost, serverport, 5002)) == -1)
+          exit (EXIT_FAILURE);
 
      strcpy(user.name, username);
      strcpy(user.password, password);
@@ -122,6 +124,8 @@ static void handle_login(char *username, char *password)
      }
 
      printf("Login success!\n");
+     close(sfd_5000);
+     close(sfd_5002);
 }
 
 static void handle_transmit(char *peername)
@@ -130,6 +134,9 @@ static void handle_transmit(char *peername)
      char read_buf[BUFSIZ];
      struct user_st peer;
      size_t s;
+
+     if ((sfd = make_dgram_client_socket(serverhost, serverport, 0)) == -1)
+          exit(EXIT_FAILURE);
 
      s = put_transmit_info(peername, &write_buf);
      if (write(sfd, write_buf, s) != s)
@@ -148,14 +155,13 @@ static void handle_transmit(char *peername)
      }
 
      get_transmit_ok_info(read_buf, &peer);
+     printf("transmit video to %s@%s, audio to %s@%s.\n", peer.port_5000, peer.host,
+            peer.port_5002, peer.host);
      transmitter_setup(peer.host, atoi(peer.port_5000), atoi(peer.port_5002));
+     close(sfd);
 }
 
 static void handle_receive()
 {
-     pid_t pid;
-
-     pid = fork();
-     if (pid == 0)
-          receiver_setup();
+     receiver_setup();
 }

@@ -1,6 +1,14 @@
-#include "dsclient.h"
-#include <stdlib.h>
-#include <string.h>
+#include <gst/gst.h>
+
+
+/* Structure to contain all our information, so we can pass it to callbacks */
+typedef struct _CustomDataR {
+     GstElement *pipeline;
+     GstElement *videosource, *videoconvert, *videodec;
+     GstElement *videoqueue, *videodepay, *videosink;
+     GstElement *audiosource, *audioconvert, *audiodec;
+     GstElement *audioqueue, *audiodepay, *audiosink;
+} CustomDataR;
 
 /* Handler for the pad-added signal */
 static void dec_pad_added_handler (GstElement *src, GstPad *pad, CustomDataR *data);
@@ -13,20 +21,10 @@ int receiver_setup() {
      GstCaps *videosrccaps;
      GstCaps *audiosrccaps;
      gboolean terminate = FALSE;
-     /* int argc; */
-     /* char **argv; */
-     /* char *prog_name = "client"; */
 
      /* Initialize GStreamer */
-     gst_init (NULL, NULL);
-     /* argc = 1; */
-     /* argv = malloc(sizeof(char *)); */
-     /* *argv = malloc(sizeof(prog_name)); */
-     /* strcpy(*argv, prog_name); */
-     /* if (!gst_init_check (&argc, &argv, NULL)) { */
-     /*      g_printerr ("init error:"); */
-     /*      exit(EXIT_FAILURE); */
-     /* } */
+     /* gst_init (&argc, &argv); */
+     gst_init(NULL, NULL);
 
      /* Create the elements */
      data.videosource = gst_element_factory_make ("udpsrc", "videosource");
