@@ -10,3 +10,4 @@
 
 int make_dgram_server_socket(int portnum);
 int make_dgram_client_socket(char *servhost, int servport, int localhost);
+int make_addr(char *host, char *port, struct addrinfo *addr);

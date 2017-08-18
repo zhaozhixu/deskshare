@@ -17,7 +17,7 @@ static void handle_receive();
 
 static int sfd, sfd_5000, sfd_5002;
 static int serverport = 5009;
-static char serverhost[] = "127.0.0.1";
+static char serverhost[] = "139.199.163.114";
 
 int main(int argc, char *argv[])
 {
@@ -43,11 +43,13 @@ int main(int argc, char *argv[])
 static void handle_register(char *username, char *password)
 {
      struct user_st user;
+     struct addrinfo addr;
+     char service[NI_MAXSERV];
      char *write_buf;
      char read_buf[BUFSIZ];
      size_t s;
 
-     if ((sfd = make_dgram_client_socket(serverhost, serverport, 0)) == -1)
+     if ((sfd = make_dgram_server_socket(0)) == -1)
           exit(EXIT_FAILURE);
 
      strcpy(user.name, username);
@@ -55,14 +57,23 @@ static void handle_register(char *username, char *password)
      s = put_register_info(&user, &write_buf);
      fprintf(stderr, "%s", write_buf);
 
-     /* sfd = make_dgram_client_socket("127.0.0.1", 9999, 0); */
-     if (write(sfd, write_buf, s) != s) {
-          perror("Error sending response");
+     sprintf(service, "%d", serverport);
+     if(make_addr(serverhost, service, &addr) == -1) {
+          perror("make_addr:");
           exit(EXIT_FAILURE);
      }
+     if (sendto(sfd, write_buf, s, 0, (struct sockaddr *) addr.ai_addr,
+                addr.ai_addrlen) != s)
+          perror("Error sending response");
+     /* sfd = make_dgram_client_socket("127.0.0.1", 9999, 0); */
+     /* if (write(sfd, write_buf, s) != s) { */
+     /*      perror("Error sending response"); */
+     /*      exit(EXIT_FAILURE); */
+     /* } */
      free(write_buf);
 
-     s = read(sfd, read_buf, BUFSIZ);
+     s = recvfrom(sfd, read_buf, BUFSIZ, 0, NULL, NULL);
+     /* s = read(sfd, read_buf, BUFSIZ); */
      if (s == -1) {
           perror("read");
           exit(EXIT_FAILURE);
@@ -80,23 +91,36 @@ static void handle_register(char *username, char *password)
 static void handle_login(char *username, char *password)
 {
      struct user_st user;
+     struct addrinfo addr;
+     char service[NI_MAXSERV];
      char *write_buf;
      char read_buf[BUFSIZ];
      size_t s;
 
-     if ((sfd_5000 = make_dgram_client_socket(serverhost, serverport, 5000)) == -1)
+     if ((sfd_5000 = make_dgram_server_socket(5000)) == -1)
           exit(EXIT_FAILURE);
-     if ((sfd_5002 = make_dgram_client_socket(serverhost, serverport, 5002)) == -1)
+     if ((sfd_5002 = make_dgram_server_socket(5002)) == -1)
           exit (EXIT_FAILURE);
 
      strcpy(user.name, username);
      strcpy(user.password, password);
      s = put_login_info(&user, 5000, &write_buf);
-     if (write(sfd_5000, write_buf, s) != s)
-          fprintf(stderr, "Error sending response\n");
+
+     sprintf(service, "%d", serverport);
+     if(make_addr(serverhost, service, &addr) == -1) {
+          perror("make_addr:");
+          exit(EXIT_FAILURE);
+     }
+     if (sendto(sfd_5000, write_buf, s, 0, (struct sockaddr *) addr.ai_addr,
+                addr.ai_addrlen) != s)
+          perror("Error sending response");
+
+     /* if (write(sfd_5000, write_buf, s) != s) */
+     /*      fprintf(stderr, "Error sending response\n"); */
      free(write_buf);
 
-     s = read(sfd_5000, read_buf, BUFSIZ);
+     s = recvfrom(sfd_5000, read_buf, BUFSIZ, 0, NULL, NULL);
+     /* s = read(sfd_5000, read_buf, BUFSIZ); */
      if (s == -1) {
           perror("read");
           exit(EXIT_FAILURE);
@@ -108,11 +132,16 @@ static void handle_login(char *username, char *password)
      }
 
      s = put_login_info(&user, 5002, &write_buf);
-     if (write(sfd_5002, write_buf, s) != s)
-          fprintf(stderr, "Error sending response\n");
+     if (sendto(sfd_5002, write_buf, s, 0, (struct sockaddr *) addr.ai_addr,
+                addr.ai_addrlen) != s)
+          perror("Error sending response");
+
+     /* if (write(sfd_5002, write_buf, s) != s) */
+     /*      fprintf(stderr, "Error sending response\n"); */
      free(write_buf);
 
-     s = read(sfd_5002, read_buf, BUFSIZ);
+     s = recvfrom(sfd_5002, read_buf, BUFSIZ, 0, NULL, NULL);
+     /* s = read(sfd_5002, read_buf, BUFSIZ); */
      if (s == -1) {
           perror("read");
           exit(EXIT_FAILURE);
@@ -130,20 +159,32 @@ static void handle_login(char *username, char *password)
 
 static void handle_transmit(char *peername)
 {
+     struct addrinfo addr;
+     char service[NI_MAXSERV];
      char *write_buf;
      char read_buf[BUFSIZ];
      struct user_st peer;
      size_t s;
 
-     if ((sfd = make_dgram_client_socket(serverhost, serverport, 0)) == -1)
+     if ((sfd = make_dgram_server_socket(0)) == -1)
           exit(EXIT_FAILURE);
 
      s = put_transmit_info(peername, &write_buf);
-     if (write(sfd, write_buf, s) != s)
-          fprintf(stderr, "Error sending response\n");
+
+     sprintf(service, "%d", serverport);
+     if(make_addr(serverhost, service, &addr) == -1) {
+          perror("make_addr:");
+          exit(EXIT_FAILURE);
+     }
+     if (sendto(sfd, write_buf, s, 0, (struct sockaddr *) addr.ai_addr,
+                addr.ai_addrlen) != s)
+          perror("Error sending response");
+     /* if (write(sfd, write_buf, s) != s) */
+     /*      fprintf(stderr, "Error sending response\n"); */
      free(write_buf);
 
-     s = read(sfd, read_buf, BUFSIZ);
+     s = recvfrom(sfd, read_buf, BUFSIZ, 0, NULL, NULL);
+     /* s = read(sfd, read_buf, BUFSIZ); */
      if (s == -1) {
           perror("read");
           exit(EXIT_FAILURE);
