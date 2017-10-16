@@ -27,8 +27,12 @@ void db_end() {
 }
 
 int add_user(char *name, char *password, char *host,
-             char *port_5000, char *port_5002, int *user_id) {
-
+             char *port_vrecv, char *port_vrecv_c,
+             char *port_arecv, char *port_arecv_c,
+             char *port_vsend, char *port_vsend_c,
+             char *port_asend, char *port_asend_c,
+             char *port_toserver, int *user_id)
+{
      MYSQL_RES *res_ptr;
      MYSQL_ROW mysqlrow;
 
@@ -41,8 +45,16 @@ int add_user(char *name, char *password, char *host,
           return 0;
 
      mysql_escape_string(es, name, strlen(name));
-     sprintf(is, "INSERT INTO user(name, password, host, port_5000, port_5002) VALUES('%s', '%s', '%s', '%s', '%s')",
-             name, password, host, port_5000, port_5002);
+     sprintf(is, "INSERT INTO user(name, password, host,"
+             "port_vrecv,  port_vrecv_c, port_arecv,  port_arecv_c,"
+             "port_vsend,  port_vsend_c, port_asend,  port_asend_c,"
+             "port_toserver)"
+             "VALUES('%s', '%s', '%s', '%s', '%s', '%s', '%s',"
+             "'%s','%s','%s','%s','%s')",
+             name, password, host,
+             port_vrecv,  port_vrecv_c, port_arecv,  port_arecv_c,
+             port_vsend,  port_vsend_c, port_asend,  port_asend_c,
+             port_toserver);
 
      res = mysql_query(&my_connection, is);
      if (res) {
@@ -106,8 +118,15 @@ int find_user(char *name, struct user_st *result) {
                          strcpy(result->name, mysqlrow[1]);
                          strcpy(result->password, mysqlrow[2]);
                          strcpy(result->host, mysqlrow[3]);
-                         strcpy(result->port_5000, mysqlrow[4]);
-                         strcpy(result->port_5002, mysqlrow[5]);
+                         strcpy(result->port_vrecv, mysqlrow[4]);
+                         strcpy(result->port_vrecv_c, mysqlrow[5]);
+                         strcpy(result->port_arecv, mysqlrow[6]);
+                         strcpy(result->port_arecv_c, mysqlrow[7]);
+                         strcpy(result->port_vsend, mysqlrow[8]);
+                         strcpy(result->port_vsend_c, mysqlrow[9]);
+                         strcpy(result->port_asend, mysqlrow[10]);
+                         strcpy(result->port_asend_c, mysqlrow[11]);
+                         strcpy(result->port_toserver, mysqlrow[12]);
                     }
                }
           }
@@ -139,12 +158,24 @@ int delete_user(int id) {
 }
 
 int update_user(int id, char *name, char *password, char *host,
-                char *port_5000, char *port_5002) {
+                char *port_vrecv, char *port_vrecv_c,
+                char *port_arecv, char *port_arecv_c,
+                char *port_vsend, char *port_vsend_c,
+                char *port_asend, char *port_asend_c,
+                char *port_toserver)
+{
      int res;
      char qs[250];
 
-     sprintf(qs, "UPDATE user SET name = '%s', password = '%s', host = '%s', port_5000 = '%s', port_5002 = '%s' WHERE id = '%d'",
-             name, password, host, port_5000, port_5002, id);
+     sprintf(qs, "UPDATE user SET name = '%s', password = '%s',"
+             "host = '%s', port_vrecv = '%s', port_vrecv_c = '%s',"
+             "port_arecv = '%s', port_arecv_c = '%s',"
+             "port_vsend = '%s', port_vsend_c = '%s',"
+             "port_asend = '%s', port_asend_c = '%s',"
+             "port_toserver = '%s' WHERE id = '%d'",
+             name, password, host, port_vrecv, port_vrecv_c,
+             port_arecv, port_arecv_c, port_vsend, port_vsend_c,
+             port_asend, port_asend_c, port_toserver, id);
 
      res = mysql_query(&my_connection, qs);
      if (res) {

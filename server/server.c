@@ -1,57 +1,57 @@
 #include "../lib/dgram.h"
 #include "../lib/protocol.h"
+#include "../lib/db.h"
 
 static void process_req(char *buf, ssize_t n,
-                   struct sockaddr_storage *peer_addr,
-                   socklen_t peer_addr_len);
+                   struct sockaddr_storage clt_addr,
+                   socklen_t clt_addr_len);
 static void handle_register(char *buf, size_t n,
-                            struct sockaddr_storage *dest_addr,
-                            socklen_t addrlen);
+                            struct sockaddr_storage *clt_addr,
+                            socklen_t clt_addr_len);
 static void handle_login(char *buf, size_t n,
                          char *host, char *service,
-                         struct sockaddr_storage *dest_addr,
-                         socklen_t addrlen);
+                         struct sockaddr_storage *clt_addr,
+                         socklen_t clt_addr_len);
 static void handle_transmit(char *buf, size_t n,
-                            struct sockaddr_storage *dest_addr,
-                            socklen_t addrlen);
+                            struct sockaddr_storage *clt_addr,
+                            socklen_t clt_addr_len);
 
 static int sfd;
+static int serverport = DEFAULT_SERVER_PORT;
 
 int main(int argc, char *argv[])
 {
-     int portnum, s;
-     struct sockaddr_storage peer_addr;
-     socklen_t peer_addr_len;
      ssize_t nread;
      char buf[BUFSIZ];
+     struct sockaddr_storage clt_addr;
+     socklen_t clt_addr_len;
 
-     portnum = 5009;
-     if ((sfd = make_dgram_server_socket(portnum)) == -1)
+     if ((sfd = make_dgram_server_socket(serverport)) == -1)
           return (EXIT_FAILURE);
 
-     peer_addr_len = sizeof(struct sockaddr_storage);
+     clt_addr_len = sizeof(struct sockaddr_storage);
      db_start("deskshare", "123");
 
      for(;;) {
           nread = recvfrom(sfd, buf, BUFSIZ, 0,
-                           (struct sockaddr *)&peer_addr,
-                           &peer_addr_len);
+                           (struct sockaddr *)&clt_addr,
+                           &clt_addr_len);
           if (nread == -1)
                continue;
           fprintf(stderr, "%s", buf);
-          process_req(buf, nread, &peer_addr, peer_addr_len);
+          process_req(buf, nread, clt_addr, clt_addr_len);
      }
 }
 
 static void process_req(char *buf, ssize_t n,
-                   struct sockaddr_storage *peer_addr,
-                   socklen_t peer_addr_len)
+                   struct sockaddr_storage clt_addr,
+                   socklen_t clt_addr_len)
 {
      ssize_t s;
      char host[NI_MAXHOST], service[NI_MAXSERV];
 
-     s = getnameinfo((struct sockaddr *)peer_addr,
-                     peer_addr_len, host, NI_MAXHOST,
+     s = getnameinfo((struct sockaddr *)&clt_addr,
+                     clt_addr_len, host, NI_MAXHOST,
                      service, NI_MAXSERV, NI_NUMERICSERV);
      if (s == 0)
           printf("Received %zd bytes from %s:%s\n",
@@ -60,22 +60,31 @@ static void process_req(char *buf, ssize_t n,
           fprintf(stderr, "getnameinfo: %s\n", gai_strerror(s));
 
      if (is_register(buf, n))
-          handle_register(buf, n, peer_addr, peer_addr_len);
+          handle_register(buf, n, &clt_addr, clt_addr_len);
      else if (is_login(buf, n))
-          handle_login(buf, n, host, service, peer_addr, peer_addr_len);
+          handle_login(buf, n, host, service, &clt_addr, clt_addr_len);
      else if (is_transmit(buf, n))
-          handle_transmit(buf, n, peer_addr, peer_addr_len);
+          handle_transmit(buf, n, &clt_addr, clt_addr_len);
      else
           fprintf(stderr, "process_req: unrecognized request\n");
 }
 
+static int send_buf(char *buf, size_t len, struct sockaddr_storage *clt_addr, socklen_t clt_addr_len)
+{
+     if (sendto(sfd, buf, len, 0, (struct sockaddr *)clt_addr, clt_addr_len) != len) {
+          fprintf(stderr, "Error sending response\n");
+          return -1;
+     }
+     return 0;
+}
+
 static void handle_register(char *buf, size_t n,
-                            struct sockaddr_storage *dest_addr,
-                            socklen_t addrlen)
+                            struct sockaddr_storage *clt_addr,
+                            socklen_t clt_addr_len)
 {
      int res, user_id;
      size_t s;
-     char *send_buf;
+     char *wr_buf;
      char fail[] = "register fail";
      char fail_user[] = "already have this user";
      struct user_st user;
@@ -85,122 +94,127 @@ static void handle_register(char *buf, size_t n,
 
      res = find_user(user.name, &result);
      if (res >= 1) {
-          if (sendto(sfd, fail_user, sizeof(fail_user), 0,
-                     (struct sockaddr *)dest_addr, addrlen)
-              != sizeof(fail_user))
-               fprintf(stderr, "Error sending response\n");
+          send_buf(fail_user, sizeof(fail_user), clt_addr, clt_addr_len);
           return;
      }
 
-     res = add_user(user.name, user.password, "", "", "", &user_id);
+     res = add_user(user.name, user.password, "", "", "", "", "", "", "", "", "", "", &user_id);
      printf("Result of adding a user was %d, user_id is %d\n",
             res, user_id);
-
      if (!res) {
-          if (sendto(sfd, fail, sizeof(fail), 0,
-                     (struct sockaddr *)dest_addr, addrlen)
-              != sizeof(fail))
-               fprintf(stderr, "Error sending response\n");
+          send_buf(fail, sizeof(fail), clt_addr, clt_addr_len);
           return;
      }
 
-     s = put_register_ok_info(&send_buf);
-     if (sendto(sfd, send_buf, s, 0,
-                (struct sockaddr *)dest_addr, addrlen) != s)
-          fprintf(stderr, "Error sending response\n");
-     free(send_buf);
+     s = put_register_ok_info(&wr_buf);
+     if (send_buf(wr_buf, s, clt_addr, clt_addr_len) == -1)
+          return;
+     free(wr_buf);
 }
 
 static void handle_login(char *buf, size_t n,
                          char *host, char *service,
-                         struct sockaddr_storage *dest_addr,
-                         socklen_t addrlen)
+                         struct sockaddr_storage *clt_addr,
+                         socklen_t clt_addr_len)
 {
-     int res, port;
+     int res;
      size_t s;
      char fail_pw[] = "wrong password";
      char fail_un[] = "no such user";
      char fail[] = "login save fail";
-     char *send_buf;
+     char serv_name[32];
+     char *wr_buf;
      struct user_st user;
      struct user_st result;
 
-     get_login_info(buf, &user, &port);
+     get_login_info(buf, &user, serv_name);
      res = find_user(user.name, &result);
-
      if (res <= 0) {
-          if (sendto(sfd, fail_un, sizeof(fail_un), 0,
-                     (struct sockaddr *)&dest_addr, addrlen)
-              != sizeof(fail_un))
-               fprintf(stderr, "Error sending response\n");
+          send_buf(fail_un, sizeof(fail_un), clt_addr, clt_addr_len);
           return;
      }
 
      if (strcmp(user.password, result.password)) {
-          if (sendto(sfd, fail_pw, sizeof(fail_pw), 0,
-                     (struct sockaddr *)dest_addr, addrlen)
-              != sizeof(fail_pw))
-               fprintf(stderr, "Error sending response\n");
+          send_buf(fail_pw, sizeof(fail_pw), clt_addr, clt_addr_len);
           return;
      }
 
-     if (port == 5000)
-          res = update_user(result.id, result.name, result.password,
-                            host, service, result.port_5002);
-     else if (port == 5002)
-          res = update_user(result.id, result.name, result.password,
-                            host, result.port_5000, service);
-
+     if (!strcmp(serv_name, SERV_VRECV))
+          res = update_user(result.id, result.name, result.password, host, service, result.port_vrecv_c, result.port_arecv, result.port_arecv_c, result.port_vsend, result.port_vsend_c, result.port_asend, result.port_asend_c, result.port_toserver);
+     else if (!strcmp(serv_name, SERV_VRECV_C))
+          res = update_user(result.id, result.name, result.password, host, result.port_vrecv, service, result.port_arecv, result.port_arecv_c, result.port_vsend, result.port_vsend_c, result.port_asend, result.port_asend_c, result.port_toserver);
+     else if (!strcmp(serv_name, SERV_ARECV))
+          res = update_user(result.id, result.name, result.password, host, result.port_vrecv, result.port_vrecv_c, service, result.port_arecv_c, result.port_vsend, result.port_vsend_c, result.port_asend, result.port_asend_c, result.port_toserver);
+     else if (!strcmp(serv_name, SERV_ARECV_C))
+          res = update_user(result.id, result.name, result.password, host, result.port_vrecv, result.port_vrecv_c, result.port_arecv, service, result.port_vsend, result.port_vsend_c, result.port_asend, result.port_asend_c, result.port_toserver);
+     else if (!strcmp(serv_name, SERV_VSEND))
+          res = update_user(result.id, result.name, result.password, host, result.port_vrecv, result.port_vrecv_c, result.port_arecv, result.port_arecv_c, service, result.port_vsend_c, result.port_asend, result.port_asend_c, result.port_toserver);
+     else if (!strcmp(serv_name, SERV_VSEND_C))
+          res = update_user(result.id, result.name, result.password, host, result.port_vrecv, result.port_vrecv_c, result.port_arecv, result.port_arecv_c, result.port_vsend, service, result.port_asend, result.port_asend_c, result.port_toserver);
+     else if (!strcmp(serv_name, SERV_ASEND))
+          res = update_user(result.id, result.name, result.password, host, result.port_vrecv, result.port_vrecv_c, result.port_arecv, result.port_arecv_c, result.port_vsend, result.port_vsend_c, service, result.port_asend_c, result.port_toserver);
+     else if (!strcmp(serv_name, SERV_ASEND_C))
+          res = update_user(result.id, result.name, result.password, host, result.port_vrecv, result.port_vrecv_c, result.port_arecv, result.port_arecv_c, result.port_vsend, result.port_vsend_c, result.port_asend, service, result.port_toserver);
+     else if (!strcmp(serv_name, SERV_TOSERVER))
+          res = update_user(result.id, result.name, result.password, host, result.port_vrecv, result.port_vrecv_c, result.port_arecv, result.port_arecv_c, result.port_vsend, result.port_vsend_c, result.port_asend, result.port_asend_c, service);
+     else {
+          fprintf(stderr, "unrecognized service name: %s", serv_name);
+          return;
+     }
      if (!res) {
-          if (sendto(sfd, fail, sizeof(fail), 0,
-                     (struct sockaddr *)dest_addr, addrlen)
-              != sizeof(fail))
-               fprintf(stderr, "Error sending response\n");
+          send_buf(fail, sizeof(fail), clt_addr, clt_addr_len);
           return;
      }
 
-     s = put_login_ok_info(port, &send_buf);
-     if (sendto(sfd, send_buf, s, 0,
-                (struct sockaddr *)dest_addr, addrlen) != s)
-          fprintf(stderr, "Error sending response\n");
-     free(send_buf);
+     s = put_login_ok_info(serv_name, &wr_buf);
+     if (send_buf(wr_buf, s, clt_addr, clt_addr_len) == -1)
+          return;
+     free(wr_buf);
 }
 
 static void handle_transmit(char *buf, size_t n,
-                            struct sockaddr_storage *dest_addr,
-                            socklen_t addrlen)
+                            struct sockaddr_storage *clt_addr,
+                            socklen_t clt_addr_len)
 {
      int res;
      size_t s;
-     char *peername;
-     char *send_buf;
-     struct user_st peer;
+     char from[MAX_USERNAME], to[MAX_USERNAME];
+     char *wr_buf;
+     char rd_buf[BUFSIZ];
+     struct user_st sender, receiver;
+     struct addrinfo recv_addr;
      char fail_user[] = "no such user";
 
-     get_transmit_info(buf, &peername);
-     res = find_user(peername, &peer);
+     get_transmit_info(buf, from, to);
 
+     res = find_user(to, &receiver);
      if (res <= 0) {
-          if (sendto(sfd, fail_user, sizeof(fail_user), 0,
-                     (struct sockaddr *)dest_addr, addrlen)
-              != sizeof(fail_user))
-               fprintf(stderr, "Error sending response\n");
+          send_buf(fail_user, sizeof(fail_user), clt_addr, clt_addr_len);
+          return;
+     }
+     res = find_user(from, &sender);
+     if (res <= 0) {
+          send_buf(fail_user, sizeof(fail_user), clt_addr, clt_addr_len);
           return;
      }
 
-     s = put_transmit_ok_info(&peer, &send_buf);
-     if (sendto(sfd, send_buf, s, 0, (struct sockaddr *)dest_addr,
-                addrlen) != s)
-          fprintf(stderr, "Error sending response\n");
+     /* need timestamp */
+     s = put_receive_info(from, to, &sender, &wr_buf);
+     if (make_addr(receiver.host, receiver.port_toserver, &recv_addr) == -1) {
+          perror("make_addr:");
+          exit(EXIT_FAILURE);
+     }
+     s = send_and_recv(wr_buf, s, rd_buf, sfd, &recv_addr);
+     if (!is_receive_ok(rd_buf, s)) {
+          fprintf(stderr, "Error receive_fail\n");
+          return;
+     }
 
-     /* int cfd; */
-     /* cfd = make_dgram_client_socket(peer.host, atoi(peer.port_5000), 0); */
-     /* if (cfd == -1) */
-     /*      return; */
-     /* s = put_receive_info(peername, &send_buf); */
-     /* if (write(cfd, send_buf, s) != s) */
-     /*      fprintf(stderr, "Error sending response\n"); */
-     /* close(cfd); */
-     free(send_buf);
-     free(peername);
+     s = put_transmit_ok_info(from, to, &receiver, &wr_buf);
+     if (sendto(sfd, wr_buf, s, 0, (struct sockaddr *)&clt_addr,
+                clt_addr_len) != s) {
+          fprintf(stderr, "Error sending response\n");
+          return;
+     }
+     free(wr_buf);
 }

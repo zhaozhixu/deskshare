@@ -1,6 +1,4 @@
 #include "dsserver.h"
-#include <stdlib.h>
-#include <string.h>
 
 /* Handler for the pad-added signal */
 /* static void pad_added_handler (GstElement *src, GstPad *pad, CustomDataT *data); */

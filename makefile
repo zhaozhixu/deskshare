@@ -8,8 +8,10 @@ info:
 	@echo "  clean: clean all object files"
 
 clean:
-	rm -f $(CLIENT_DIR)/*.o
-	rm -f $(SERVER_DIR)/*.o
+	cd $(CLIENT_DIR) ; \
+	make clean
+	cd $(SERVER_DIR) ; \
+	make clean
 
 debug:
 	cd $(CLIENT_DIR) ; \

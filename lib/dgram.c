@@ -146,3 +146,18 @@ int make_addr(char *host, char *port, struct addrinfo *addr)
 
      return 0;
 }
+
+size_t send_and_recv(char *wr_buf, size_t len, char *rd_buf, int sfd, struct addrinfo *addr)
+{
+     if (sendto(sfd, wr_buf, len, 0, (struct sockaddr *) addr->ai_addr, addr->ai_addrlen) != len) {
+          perror("Error sending response");
+          exit(EXIT_FAILURE);
+     }
+     len = recvfrom(sfd, rd_buf, BUFSIZ, 0, NULL, NULL);
+     if (len == -1) {
+          perror("recvfrom");
+          exit(EXIT_FAILURE);
+     }
+
+     return len;
+}
