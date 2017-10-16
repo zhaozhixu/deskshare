@@ -101,7 +101,7 @@ static void load_config()
      char *cfg_dir = ".deskshare";
      char *cfg_name = "dsconfig";
      char *cfg_path, *home_path;
-     char buf[BUFSIZ], *cfg_str;
+     char buf[BUFSIZ], *cfg_str = NULL;
      int fd;
      FILE *file;
      DIR *dp;
