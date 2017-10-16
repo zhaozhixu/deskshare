@@ -37,8 +37,8 @@ int add_user(char *name, char *password, char *host,
      MYSQL_ROW mysqlrow;
 
      int res;
-     char is[250];
-     char es[250];
+     char is[MAX_SQL];
+     char es[MAX_SQL];
      int new_user_id = -1;
 
      if (!dbconnected)
@@ -90,8 +90,8 @@ int find_user(char *name, struct user_st *result) {
      MYSQL_ROW mysqlrow;
 
      int res;
-     char qs[500];
-     char ss[250];
+     char qs[MAX_SQL];
+     char ss[MAX_SQL];
 
      int num_rows = 0;
 
@@ -137,7 +137,7 @@ int find_user(char *name, struct user_st *result) {
 
 int delete_user(int id) {
      int res;
-     char qs[250];
+     char qs[MAX_SQL];
      int num_rows;
      MYSQL_RES *res_ptr;
      MYSQL_ROW mysqlrow;
@@ -165,7 +165,7 @@ int update_user(int id, char *name, char *password, char *host,
                 char *port_toserver)
 {
      int res;
-     char qs[250];
+     char qs[MAX_SQL];
 
      sprintf(qs, "UPDATE user SET name = '%s', password = '%s',"
              "host = '%s', port_vrecv = '%s', port_vrecv_c = '%s',"

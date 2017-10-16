@@ -1,5 +1,7 @@
 #include "deskshare.h"
 
+#define MAX_SQL 1024
+
 int db_start(char *name, char *password);
 void db_end();
 

@@ -22,6 +22,19 @@ static int sfd_vrecv, sfd_arecv, sfd_vsend, sfd_asend,
      sfd_vrecv_c, sfd_arecv_c, sfd_vsend_c, sfd_asend_c,
      sfd_toserver;
 
+static char cfg_fmt[] =
+     "serverhost=%s\n"
+     "serverport=%d\n"
+     "port_vrecv=%d\n"
+     "port_vrecv_c=%d\n"
+     "port_arecv=%d\n"
+     "port_arecv_c=%d\n"
+     "port_vsend=%d\n"
+     "port_vsend_c=%d\n"
+     "port_asend=%d\n"
+     "port_asend_c=%d\n"
+     "port_toserver=%d\n";
+
 static char usage[] =
      "usage: deskshare <command> [<args>]\n"
      "\tregister <username> <password> : register a new user\n"
@@ -85,7 +98,7 @@ static void load_config()
           "port_asend=%d\n"
           "port_asend_c=%d\n"
           "port_toserver=%d\n";
-     char *cfg_dir = ".dsshare";
+     char *cfg_dir = ".deskshare";
      char *cfg_name = "dsconfig";
      char *cfg_path, *home_path;
      char buf[BUFSIZ], *cfg_str;
@@ -124,7 +137,7 @@ static void load_config()
                   DEFAULT_VRECV_C, DEFAULT_ARECV,
                   DEFAULT_ARECV_C, DEFAULT_VSEND,
                   DEFAULT_VSEND_C, DEFAULT_ASEND,
-                  DEFAULT_ARECV_C, DEFAULT_TOSERVER);
+                  DEFAULT_ASEND_C, DEFAULT_TOSERVER);
           default_config();
           free(cfg_path);
           fclose(file);
@@ -134,7 +147,7 @@ static void load_config()
 
      while ((n = read(fd, buf, BUFSIZ)) > 0) {
           if (sn + n > size) {
-               if ((cfg_str = realloc(cfg_str, size + BUFSIZ))) {
+               if (!(cfg_str = realloc(cfg_str, size + BUFSIZ))) {
                     perror("realloc");
                     exit(EXIT_FAILURE);
                }
@@ -174,6 +187,14 @@ static void init()
      char service[NI_MAXSERV];
 
      load_config();
+#ifdef DEBUG
+     fprintf(stderr, cfg_fmt, serverhost,
+            serverport, port_vrecv,
+            port_vrecv_c, port_arecv,
+            port_arecv_c, port_vsend,
+            port_vsend_c, port_asend,
+            port_asend_c, port_toserver);
+#endif
      if ((sfd_vrecv = make_dgram_server_socket(port_vrecv)) == -1
          || (sfd_arecv = make_dgram_server_socket(port_arecv)) == -1
          || (sfd_vsend = make_dgram_server_socket(port_vsend)) == -1
