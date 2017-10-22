@@ -211,7 +211,7 @@ static void handle_transmit(char *buf, size_t n,
      }
 
      s = put_transmit_ok_info(from, to, &receiver, &wr_buf);
-     if (sendto(sfd, wr_buf, s, 0, (struct sockaddr *)&clt_addr,
+     if (sendto(sfd, wr_buf, s, 0, (struct sockaddr *)clt_addr,
                 clt_addr_len) != s) {
           fprintf(stderr, "Error sending response\n");
           return;
