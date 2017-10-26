@@ -153,6 +153,7 @@ size_t send_and_recv(char *wr_buf, size_t len, char *rd_buf, int sfd, struct add
           perror("Error sending response");
           exit(EXIT_FAILURE);
      }
+     fprintf(stderr, "sendto: %s\n", wr_buf);
      len = recvfrom(sfd, rd_buf, BUFSIZ, 0, NULL, NULL);
      if (len == -1) {
           perror("recvfrom");

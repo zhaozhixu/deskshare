@@ -74,7 +74,7 @@ int transmitter_setup(gchar *host, gint port_5000, gint port_5002) {
      g_object_set (data.videoenc, "bitrate", 500, NULL);
      /* g_object_set (data.videoenc, "tune", "zerolatency", "bitrate", 500, "speed-preset", "superfast", NULL); */
      g_object_set (data.videosink, "port", port_5000, "host", host, NULL);
-     g_object_set (data.audiosource, "device", "alsa_output.pci-0000_00_1b.0.analog-stereo.monitor", NULL);
+     /* g_object_set (data.audiosource, "device", "alsa_output.pci-0000_00_1b.0.analog-stereo.monitor", NULL); */
      g_object_set (data.audiosink, "port", port_5002, "host", host, NULL);
 
      /* Connect to the pad-added signal */
